@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using LearnOpenTK;
@@ -16,11 +18,20 @@ public class ObjLoader
         List<Vector3> vertices = new List<Vector3>();
         List<Vector3> normals = new List<Vector3>();
         List<Vector2> texCoords = new List<Vector2>();
+        List<string> indices = new List<string>();
         List<int> vertexIndices = new List<int>();
         List<int> normalIndices = new List<int>();
         List<int> texCoordIndices = new List<int>();
+        int vbo = 0;
+        List<string> materialNames = new List<string>();
+        List<Mesh> meshes = new List<Mesh>();
+        Mesh currentMesh = null;
+        string currentMaterialName = null;
+        Shader _lightingShader = new Shader("C:\\Users\\xxmon\\source\\repos\\old\\VertexDungeon\\VertexDungeon\\bin\\Debug\\net6.0\\Shaders\\shader.vert", "C:\\Users\\xxmon\\source\\repos\\old\\VertexDungeon\\VertexDungeon\\bin\\Debug\\net6.0\\Shaders\\lighting.frag");
+        List<int> materialStartIndex = new List<int>();
+        int faceCount = 0;
         Dictionary<string, Material> materials = new Dictionary<string, Material>();
-
+        mtlFilePath = ChangeObjToMtl(objFilePath);
         StreamReader objReader = new StreamReader(objFilePath);
 
         string line;
@@ -60,21 +71,39 @@ public class ObjLoader
                     texCoords.Add(new Vector2(u, v));
                     break;
 
+                case "usemtl":
+                    //if (currentMesh != null)
+                    //{
+                    //    meshes.Add(currentMesh);
+                    //}
+                    ////?
+                    //currentMesh = new Mesh();
+
+                    materialStartIndex.Add(faceCount);
+                    //Debug.Print("material starts at: " + faceCount);
+                    if (parts.Length >= 2)
+                    {
+                        currentMaterialName = parts[1];
+                    }
+
+                    break;
+
                 case "f":
+                    faceCount += 12;
                     if (parts.Length < 4)
                         throw new Exception("Invalid face definition in OBJ file.");
                     for (int i = 1; i < 4; i++)
                     {
-                        string[] indices = parts[i].Split('/');
-                        if (indices.Length < 1 || indices.Length > 3)
+                        string[] indice = parts[i].Split('/');
+                        if (indice.Length < 1 || indice.Length > 3)
                             throw new Exception("Invalid face definition in OBJ file.");
 
-                        int vertexIndex = int.Parse(indices[0]) - 1;
+                        int vertexIndex = int.Parse(indice[0]) - 1;
                         vertexIndices.Add(vertexIndex);
 
-                        if (indices.Length > 1 && !string.IsNullOrWhiteSpace(indices[1]))
+                        if (indice.Length > 1 && !string.IsNullOrWhiteSpace(indice[1]))
                         {
-                            int texCoordIndex = int.Parse(indices[1]) - 1;
+                            int texCoordIndex = int.Parse(indice[1]) - 1;
                             texCoordIndices.Add(texCoordIndex);
                         }
                         else
@@ -82,23 +111,48 @@ public class ObjLoader
                             texCoordIndices.Add(-1); // No texture coordinate
                         }
 
-                        if (indices.Length > 2)
+                        if (indice.Length > 2)
                         {
-                            int normalIndex = int.Parse(indices[2]) - 1;
+                            int normalIndex = int.Parse(indice[2]) - 1;
                             normalIndices.Add(normalIndex);
                         }
                         else
                         {
                             normalIndices.Add(-1); // No normal
                         }
+
+                        // Assign the current material to this face
+                        materialNames.Add(currentMaterialName);
+                        materialNames.Add(currentMaterialName);
+                        materialNames.Add(currentMaterialName);
+                        materialNames.Add(currentMaterialName);
+
+
+
+
+                    }/*
+                    if (currentMesh == null)
+                    {
+                        // If 'f' is encountered before 'usemtl', create a new mesh
+                        currentMesh = new Mesh();
                     }
+                    for (int i = 1; i < parts.Length; i++)
+                    {
+                        string [] indice = parts[i].Split('/').ToArray();
+                        //indices = indice.ToArray();
+                        currentMesh.Indices.Add(int.Parse(indice[0]) - 1); // Vertex indices
+                        currentMesh.TextureCoordinates.Add(texCoords[int.Parse(indice[1]) - 1]); // Texture coordinates
+                        currentMesh.Normals.Add(normals[int.Parse(indice[2]) - 1]); // Normals
+                    }
+                    */
                     break;
 
                 case "mtllib":
                     if (mtlFilePath != null)
                     {
-                        string mtlFile = Path.Combine(Path.GetDirectoryName(objFilePath), parts[1]);
-                        materials = MtlLoader.LoadMtlFile(mtlFile);
+                        //string mtlFile = Path.Combine(Path.GetDirectoryName(objFilePath), parts[1]);
+                        Debug.Print("mtl file: " + mtlFilePath);
+                        materials = MtlLoader.LoadMtlFile(mtlFilePath);
                     }
                     break;
             }
@@ -134,46 +188,61 @@ public class ObjLoader
             }
         }
 
-        int vao = GL.GenVertexArray();
-        GL.BindVertexArray(vao);
+        
 
-        int vbo = GL.GenBuffer();
+        vbo = GL.GenBuffer();
         GL.BindBuffer(BufferTarget.ArrayBuffer, vbo);
         GL.BufferData(BufferTarget.ArrayBuffer, verticesData.Count * sizeof(float), verticesData.ToArray(), BufferUsageHint.StaticDraw);
 
-        int normalVbo = GL.GenBuffer();
-        GL.BindBuffer(BufferTarget.ArrayBuffer, normalVbo);
-        GL.BufferData(BufferTarget.ArrayBuffer, normalsData.Count * sizeof(float), normalsData.ToArray(), BufferUsageHint.StaticDraw);
 
-        int texCoordVbo = GL.GenBuffer();
-        GL.BindBuffer(BufferTarget.ArrayBuffer, texCoordVbo);
-        GL.BufferData(BufferTarget.ArrayBuffer, texCoordsData.Count * sizeof(float), texCoordsData.ToArray(), BufferUsageHint.StaticDraw);
+        int vao = GL.GenVertexArray();
+        GL.BindVertexArray(vao);
+
+        var positionLocation = _lightingShader.GetAttribLocation("aPos");
+        GL.EnableVertexAttribArray(positionLocation);
+        GL.VertexAttribPointer(positionLocation, 3, VertexAttribPointerType.Float, false, 0, 0);
+
+        var normalLocation = _lightingShader.GetAttribLocation("aNormal");
+        GL.EnableVertexAttribArray(normalLocation);
+        GL.VertexAttribPointer(normalLocation, 3, VertexAttribPointerType.Float, false, 0, 3 * sizeof(float));
+
+        var texCoordLocation = _lightingShader.GetAttribLocation("aTexCoords");
+        GL.EnableVertexAttribArray(texCoordLocation);
+        GL.VertexAttribPointer(texCoordLocation, 2, VertexAttribPointerType.Float, false, 0, 6 * sizeof(float));
+
 
         int numVertices = vertexIndices.Count;
 
-        GL.BindBuffer(BufferTarget.ArrayBuffer, vbo);
-        GL.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 0, 0);
-        GL.EnableVertexAttribArray(0);
+        
 
-        GL.BindBuffer(BufferTarget.ArrayBuffer, normalVbo);
-        GL.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, 0, 0);
-        GL.EnableVertexAttribArray(1);
-
-        GL.BindBuffer(BufferTarget.ArrayBuffer, texCoordVbo);
-        GL.VertexAttribPointer(2, 2, VertexAttribPointerType.Float, false, 0, 0);
-        GL.EnableVertexAttribArray(2);
-
-        Texture diffuseMap;
-        Texture specularMap;
-
-        /*
-        if (materials.ContainsKey("default"))
+        List<Material> materialList = materials.Values.ToList();
+        int j = 0;
+        foreach (Material mat in materialList)
         {
-            Material defaultMaterial = materials["default"];
-            diffuseMap = defaultMaterial.DiffuseMap;
-            specularMap = defaultMaterial.SpecularMap;
+            //Debug.Print(mat.name + "starts at " + materialStartIndex[j]);
+            mat.startIndex = materialStartIndex[j];
+            j++;
         }
-        */
-        return new Mesh(vao, numVertices, materials);
+        //Debug.Print("matNames Count: " + materialNames.Count);
+
+        return new Mesh(vao, vbo, numVertices, materialList, materialNames, vertexIndices);
+    }
+
+    public static string ChangeObjToMtl(string objFilePath)
+    {
+        if (string.IsNullOrEmpty(objFilePath) || !File.Exists(objFilePath))
+        {
+            // Handle invalid file paths or non-existing files as needed.
+            return null;
+        }
+
+        // Get the directory and file name without extension from the OBJ file path.
+        string directory = Path.GetDirectoryName(objFilePath);
+        string fileNameWithoutExt = Path.GetFileNameWithoutExtension(objFilePath);
+
+        // Append ".mtl" to the file name and create the new MTL file path.
+        string mtlFilePath = Path.Combine(directory, fileNameWithoutExt + ".mtl");
+
+        return mtlFilePath;
     }
 }

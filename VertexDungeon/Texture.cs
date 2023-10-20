@@ -78,6 +78,7 @@ namespace LearnOpenTK.Common
             Handle = glHandle;
         }
 
+
         // Activate texture
         // Multiple textures can be bound, if your shader needs more than just one.
         // If you want to do that, use GL.ActiveTexture to set which slot GL.BindTexture binds to.

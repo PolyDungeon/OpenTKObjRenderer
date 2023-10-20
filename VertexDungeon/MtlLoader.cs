@@ -1,6 +1,8 @@
 ﻿using LearnOpenTK.Common;
 using ObjRenderer;
 using OpenTK.Mathematics;
+using OpenTK.Windowing.Common;
+using System.Diagnostics;
 using System.Globalization;
 
 public class MtlLoader
@@ -37,6 +39,7 @@ public class MtlLoader
                         float r = float.Parse(parts[1], CultureInfo.InvariantCulture);
                         float g = float.Parse(parts[2], CultureInfo.InvariantCulture);
                         float b = float.Parse(parts[3], CultureInfo.InvariantCulture);
+                        //Debug.Print("rgb: " + r + ", " + g + ", " + b + "\n");
                         currentMaterial.AmbientColor = new Vector3(r, g, b);
                     }
                     break;
@@ -47,6 +50,7 @@ public class MtlLoader
                         float r = float.Parse(parts[1], CultureInfo.InvariantCulture);
                         float g = float.Parse(parts[2], CultureInfo.InvariantCulture);
                         float b = float.Parse(parts[3], CultureInfo.InvariantCulture);
+                        //Debug.Print("rgb: " + r + ", " + g + ", " + b + "\n");
                         currentMaterial.DiffuseColor = new Vector3(r, g, b);
                     }
                     break;
@@ -57,6 +61,7 @@ public class MtlLoader
                         float r = float.Parse(parts[1], CultureInfo.InvariantCulture);
                         float g = float.Parse(parts[2], CultureInfo.InvariantCulture);
                         float b = float.Parse(parts[3], CultureInfo.InvariantCulture);
+                        //Debug.Print("rgb: " + r + ", " + g + ", " + b + "\n");
                         currentMaterial.SpecularColor = new Vector3(r, g, b);
                     }
                     break;
@@ -65,6 +70,7 @@ public class MtlLoader
                     if (currentMaterial != null && parts.Length >= 2)
                     {
                         float shininess = float.Parse(parts[1], CultureInfo.InvariantCulture);
+                        //Debug.Print("shininess: " + shininess + "\n");
                         currentMaterial.Shininess = shininess;
                     }
                     break;
@@ -73,8 +79,12 @@ public class MtlLoader
                     if (currentMaterial != null && parts.Length >= 2)
                     {
                         string textureFile = parts[1];
-                        Texture textureId = Texture.LoadFromFile(textureFile);
-                        currentMaterial.DiffuseMap = textureId;
+                        //Debug.Print("DiffuseMap: " + textureFile + "\n");
+                        //Texture textureId = Texture.LoadFromFile(unixPath);
+                        //currentMaterial.DiffuseMap = textureId;
+                        currentMaterial.DiffuseTex = true;
+                        currentMaterial.DiffuseMap = textureFile;
+                        
                     }
                     break;
 
@@ -82,8 +92,12 @@ public class MtlLoader
                     if (currentMaterial != null && parts.Length >= 2)
                     {
                         string textureFile = parts[1];
-                        Texture textureId = Texture.LoadFromFile(textureFile);
-                        currentMaterial.SpecularMap = textureId;
+                        //string unixPath = ConvertToUnixPath(textureFile);
+                        //Debug.Print("SpecularMap: " + textureFile + "\n");
+                        //Texture textureId = Texture.LoadFromFile(unixPath);
+                        //currentMaterial.SpecularMap = textureId;
+                        currentMaterial.SpecularTex = true;
+                        currentMaterial.SpecularMap = textureFile;
                     }
                     break;
             }
@@ -96,7 +110,25 @@ public class MtlLoader
 
         mtlReader.Close();
 
-        return materials;
+        List<string> objectNames = GetDictionaryKeys(materials);
+
+        foreach (var name in objectNames)
+        {
+            //Debug.Print(name);
+        }
+        return materials; //why is material list size 18 when it should only be 3. 
+    }
+
+    public static List<string> GetDictionaryKeys<TValue>(Dictionary<string, TValue> dictionary)
+    {
+        List<string> keys = new List<string>(dictionary.Keys);
+        return keys;
+    }
+
+    static string ConvertToUnixPath(string windowsPath)
+    {
+        // Replace backslashes with forward slashes and then eliminate consecutive slashes
+        return windowsPath.Replace('\\', '/');
     }
 
 }

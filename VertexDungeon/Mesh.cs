@@ -1,71 +1,58 @@
-﻿using LearnOpenTK.Common;
+﻿using Assimp;
+using Assimp.Unmanaged;
+using LearnOpenTK.Common;
 using ObjRenderer;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
+using System.Diagnostics;
+using static OpenTK.Graphics.OpenGL.GL;
+using PrimitiveType = OpenTK.Graphics.OpenGL4.PrimitiveType;
 
 namespace LearnOpenTK
 {
     public class Mesh
     {
         public int Vao { get; set; }
-        public int DiffuseMap { get; set; }
-        public int SpecularMap { get; set; }
+        public int VBO { get; set; }
+        public Texture DiffuseMap { get; set; }
+        public Texture SpecularMap { get; set; }
         public int NumVertices { get; set; }
 
         public Vector3 position;
-
-        public Dictionary<string, Material> materials = new Dictionary<string, Material>();
+        List<string> matNames;
+        public List<ObjRenderer.Material> materialsList;
         public List<Vector3> Vertices { get; set; }
         public List<Vector3> Normals { get; set; }
         public List<Vector2> TextureCoordinates { get; set; }
         public List<int> Indices { get; set; }
-        public Mesh(int vao, int numVerts, Dictionary<string, Material> mats)
+        public Mesh(int vao, int vbo,int numVerts, List<ObjRenderer.Material> mats, List<string> materialNames, List<int> Indice)
         {
+            matNames = materialNames;
             // Initialize lists for vertices, normals, texture coordinates, and indices
             Vertices = new List<Vector3>();
             Normals = new List<Vector3>();
             TextureCoordinates = new List<Vector2>();
-            Indices = new List<int>();
-            materials = mats;
+            Indices = Indice;
+            materialsList = mats;
+            //DiffuseMap = materialsList[0].DiffuseMap;
+            //DiffuseMap = materialsList[0].SpecularMap;
             Vao = vao;
+            VBO = vbo;
             NumVertices = numVerts;
-            materials = mats;
             position = new(0, 0, 0);
         }
 
-        private void RenderMesh(Shader shader, Camera camera)
+        public Mesh()
         {
-            GL.BindVertexArray(Vao);
-
-            var material = materials.Values.ToList();
-            Texture _diffuseMap = material[0].DiffuseMap;
-            Texture _specularMap = Texture.LoadFromFile("Resources/container2_specular.png");
-            _diffuseMap.Use(TextureUnit.Texture0);
-            _specularMap.Use(TextureUnit.Texture1);
-            shader.Use();
-
-            shader.SetMatrix4("view", camera.GetViewMatrix());
-            shader.SetMatrix4("projection", camera.GetProjectionMatrix());
-
-            shader.SetVector3("viewPos", camera.Position);
-
-            shader.SetInt("material.diffuse", 0);
-            shader.SetInt("material.specular", 1);
-            shader.SetVector3("material.specular", new Vector3(0.5f, 0.5f, 0.5f));
-            shader.SetFloat("material.shininess", 32.0f);
-
-            // Set other shader uniforms as needed
-
-            Matrix4 model = Matrix4.CreateTranslation(mesh.position);
-            float angle = 0;
-            model = model * Matrix4.CreateFromAxisAngle(new Vector3(1.0f, 0.3f, 0.5f), angle);
-            shader.SetMatrix4("model", model);
-
-            GL.DrawArrays(PrimitiveType.Triangles, 0, mesh.NumVertices);
-            for (int i = 0; i < mesh.Vertices.Count; i += 3)
-            {
-                GL.DrawArrays(PrimitiveType.Triangles, i, 3);
-            }
+            matNames = new List<string>();
+            Vertices = new List<Vector3>();
+            Normals = new List<Vector3>();
+            TextureCoordinates = new List<Vector2>();
+            position = new(0, 0, 0);
+            Indices = new List<int>();
         }
+        
+        
+        
     }
 }
