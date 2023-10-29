@@ -14,18 +14,20 @@ namespace LearnOpenTK
     {
         public int Vao { get; set; }
         public int VBO { get; set; }
+        public Shader shader = new Shader("Shaders/shader.vert", "Shaders/lighting.frag");
         public Texture DiffuseMap { get; set; }
         public Texture SpecularMap { get; set; }
         public int NumVertices { get; set; }
 
         public Vector3 position;
         List<string> matNames;
-        public List<ObjRenderer.Material> materialsList;
+        //public List<ObjRenderer.Material> materialsList;
+        public ObjRenderer.Material material;
         public List<Vector3> Vertices { get; set; }
         public List<Vector3> Normals { get; set; }
         public List<Vector2> TextureCoordinates { get; set; }
         public List<int> Indices { get; set; }
-        public Mesh(int vao, int vbo,int numVerts, List<ObjRenderer.Material> mats, List<string> materialNames, List<int> Indice)
+        public Mesh(int vao, int vbo,int numVerts, ObjRenderer.Material mat, List<string> materialNames, List<int> Indice)
         {
             matNames = materialNames;
             // Initialize lists for vertices, normals, texture coordinates, and indices
@@ -33,7 +35,8 @@ namespace LearnOpenTK
             Normals = new List<Vector3>();
             TextureCoordinates = new List<Vector2>();
             Indices = Indice;
-            materialsList = mats;
+            material = mat;
+            //materialsList = mats;
             //DiffuseMap = materialsList[0].DiffuseMap;
             //DiffuseMap = materialsList[0].SpecularMap;
             Vao = vao;

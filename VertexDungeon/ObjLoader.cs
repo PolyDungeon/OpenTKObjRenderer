@@ -1,4 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -11,28 +15,47 @@ using OpenTK;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 
+
+using Mesh = LearnOpenTK.Mesh;
+using Material = ObjRenderer.Material;
+
 public class ObjLoader
 {
-    public static Mesh LoadObjFile(string objFilePath, string mtlFilePath = null)
+    static int _vertexArrayObject;
+    static int _vertexBufferObject;
+    static int _elementBufferObject;
+    static private Shader _shader;
+
+    static private Texture _texture;
+
+    static private Texture _texture2;
+    public static List<Mesh> LoadObjFile(string filePath, string mtlFilePath = null)
     {
+
+        
+        var meshes = new List<Mesh>();
+        Mesh currentMesh = null;
+        Material currentMaterial = null;
+        Dictionary<string, Material> materials = new Dictionary<string, Material>();
+
+        List<float> vertFloats = new();
         List<Vector3> vertices = new List<Vector3>();
         List<Vector3> normals = new List<Vector3>();
-        List<Vector2> texCoords = new List<Vector2>();
-        List<string> indices = new List<string>();
-        List<int> vertexIndices = new List<int>();
-        List<int> normalIndices = new List<int>();
-        List<int> texCoordIndices = new List<int>();
-        int vbo = 0;
-        List<string> materialNames = new List<string>();
-        List<Mesh> meshes = new List<Mesh>();
-        Mesh currentMesh = null;
-        string currentMaterialName = null;
-        Shader _lightingShader = new Shader("C:\\Users\\xxmon\\source\\repos\\old\\VertexDungeon\\VertexDungeon\\bin\\Debug\\net6.0\\Shaders\\shader.vert", "C:\\Users\\xxmon\\source\\repos\\old\\VertexDungeon\\VertexDungeon\\bin\\Debug\\net6.0\\Shaders\\lighting.frag");
-        List<int> materialStartIndex = new List<int>();
-        int faceCount = 0;
-        Dictionary<string, Material> materials = new Dictionary<string, Material>();
-        mtlFilePath = ChangeObjToMtl(objFilePath);
-        StreamReader objReader = new StreamReader(objFilePath);
+        List<Vector2> textures = new List<Vector2>();
+
+        List<Vector3> faceVerts = new List<Vector3>();
+        List<Vector3> faceNormals = new List<Vector3>();
+        List<Vector2> faceTextures = new List<Vector2>();
+        List<int> faceIndices = new List<int>();
+
+        List<Material> materialList = new();
+        int materialIndex = 0;
+        List<int> indices = new List<int>();
+        bool firstMat = true;
+
+        StreamReader objReader = new StreamReader(filePath);
+        mtlFilePath = ChangeObjToMtl(filePath);
+
 
         string line;
         while ((line = objReader.ReadLine()) != null)
@@ -55,177 +78,141 @@ public class ObjLoader
                     break;
 
                 case "vn":
-                    if (parts.Length < 4)
-                        throw new Exception("Invalid normal definition in OBJ file.");
-                    float nx = float.Parse(parts[1], CultureInfo.InvariantCulture);
-                    float ny = float.Parse(parts[2], CultureInfo.InvariantCulture);
-                    float nz = float.Parse(parts[3], CultureInfo.InvariantCulture);
-                    normals.Add(new Vector3(nx, ny, nz));
+                    // Normal
+                    normals.Add(new Vector3(
+                        float.Parse(parts[1]),
+                        float.Parse(parts[2]),
+                        float.Parse(parts[3])
+                    ));
                     break;
 
                 case "vt":
-                    if (parts.Length < 3)
-                        throw new Exception("Invalid texture coordinate definition in OBJ file.");
-                    float u = float.Parse(parts[1], CultureInfo.InvariantCulture);
-                    float v = float.Parse(parts[2], CultureInfo.InvariantCulture);
-                    texCoords.Add(new Vector2(u, v));
-                    break;
-
-                case "usemtl":
-                    //if (currentMesh != null)
-                    //{
-                    //    meshes.Add(currentMesh);
-                    //}
-                    ////?
-                    //currentMesh = new Mesh();
-
-                    materialStartIndex.Add(faceCount);
-                    //Debug.Print("material starts at: " + faceCount);
-                    if (parts.Length >= 2)
-                    {
-                        currentMaterialName = parts[1];
-                    }
-
+                    // Texture coordinate
+                    textures.Add(new Vector2(
+                        float.Parse(parts[1]),
+                        float.Parse(parts[2])
+                    ));
                     break;
 
                 case "f":
-                    faceCount += 12;
-                    if (parts.Length < 4)
-                        throw new Exception("Invalid face definition in OBJ file.");
+                    // Face
                     for (int i = 1; i < 4; i++)
                     {
-                        string[] indice = parts[i].Split('/');
-                        if (indice.Length < 1 || indice.Length > 3)
-                            throw new Exception("Invalid face definition in OBJ file.");
+                        string[] vertexData = parts[i].Split('/');
+                        int vertexIndex = int.Parse(vertexData[0]) - 1;
+                        int textureIndex = vertexData.Length > 1 ? int.Parse(vertexData[1]) - 1 : 0;
+                        int normalIndex = vertexData.Length > 2 ? int.Parse(vertexData[2]) - 1 : 0;
 
-                        int vertexIndex = int.Parse(indice[0]) - 1;
-                        vertexIndices.Add(vertexIndex);
-
-                        if (indice.Length > 1 && !string.IsNullOrWhiteSpace(indice[1]))
-                        {
-                            int texCoordIndex = int.Parse(indice[1]) - 1;
-                            texCoordIndices.Add(texCoordIndex);
-                        }
-                        else
-                        {
-                            texCoordIndices.Add(-1); // No texture coordinate
-                        }
-
-                        if (indice.Length > 2)
-                        {
-                            int normalIndex = int.Parse(indice[2]) - 1;
-                            normalIndices.Add(normalIndex);
-                        }
-                        else
-                        {
-                            normalIndices.Add(-1); // No normal
-                        }
-
-                        // Assign the current material to this face
-                        materialNames.Add(currentMaterialName);
-                        materialNames.Add(currentMaterialName);
-                        materialNames.Add(currentMaterialName);
-                        materialNames.Add(currentMaterialName);
-
-
-
-
-                    }/*
-                    if (currentMesh == null)
-                    {
-                        // If 'f' is encountered before 'usemtl', create a new mesh
-                        currentMesh = new Mesh();
+                        faceVerts.Add(vertices[vertexIndex]);
+                        faceTextures.Add(textures[textureIndex]);
+                        faceNormals.Add(normals[normalIndex]);
+                        faceIndices.Add(vertices.Count - 1);
                     }
-                    for (int i = 1; i < parts.Length; i++)
+                    break;
+
+                case "usemtl":
+                    // Material
+                    if (currentMesh != null)
                     {
-                        string [] indice = parts[i].Split('/').ToArray();
-                        //indices = indice.ToArray();
-                        currentMesh.Indices.Add(int.Parse(indice[0]) - 1); // Vertex indices
-                        currentMesh.TextureCoordinates.Add(texCoords[int.Parse(indice[1]) - 1]); // Texture coordinates
-                        currentMesh.Normals.Add(normals[int.Parse(indice[2]) - 1]); // Normals
+                        currentMesh.material = materialList[materialIndex];
+                        currentMesh.Vertices.AddRange(faceVerts);
+                        currentMesh.Normals.AddRange(faceNormals);
+                        currentMesh.TextureCoordinates.AddRange(faceTextures);
+                        currentMesh.Indices.AddRange(faceIndices);
+                        currentMesh.NumVertices = currentMesh.Vertices.Count;
+                        faceVerts.Clear();
+                        faceNormals.Clear();
+                        faceTextures.Clear();
+                        faceIndices.Clear();
+                        meshes.Add(currentMesh);
+                        materialIndex++;
                     }
-                    */
+                    //Debug.Print("Mesh Mat: " + currentMesh.material.name);
+
+                    currentMesh = new Mesh();
+
                     break;
 
                 case "mtllib":
                     if (mtlFilePath != null)
                     {
                         //string mtlFile = Path.Combine(Path.GetDirectoryName(objFilePath), parts[1]);
-                        Debug.Print("mtl file: " + mtlFilePath);
+                        Debug.Print(mtlFilePath);
                         materials = MtlLoader.LoadMtlFile(mtlFilePath);
+                        materialList = materials.Values.ToList();
                     }
+                    break;
+
+                default:
                     break;
             }
         }
 
-        objReader.Close();
-
-        List<float> verticesData = new List<float>();
-        foreach (int vertexIndex in vertexIndices)
+        if (currentMesh != null)
         {
-            Vector3 vertex = vertices[vertexIndex];
-            verticesData.AddRange(new float[] { vertex.X, vertex.Y, vertex.Z });
+            currentMesh.Vertices.AddRange(faceVerts);
+            currentMesh.Normals.AddRange(faceNormals);
+            currentMesh.TextureCoordinates.AddRange(faceTextures);
+            currentMesh.Indices.AddRange(faceIndices);
+            currentMesh.material = materialList[materialIndex];
+            currentMesh.NumVertices = currentMesh.Vertices.Count;
+            meshes.Add(currentMesh);
         }
 
-        List<float> normalsData = new List<float>();
-        foreach (int normalIndex in normalIndices)
-        {
-            Vector3 normal = normals[normalIndex];
-            normalsData.AddRange(new float[] { normal.X, normal.Y, normal.Z });
-        }
 
-        List<float> texCoordsData = new List<float>();
-        foreach (int texCoordIndex in texCoordIndices)
+
+        /*
+        //fix then add mesh here
+
+
+
+
+        _vertexArrayObject = GL.GenVertexArray();
+        GL.BindVertexArray(_vertexArrayObject);
+        foreach (var mesh in meshes) 
         {
-            if (texCoordIndex >= 0)
+
+            //not sure this is right. 
+            vertFloats = vector3ToFloat(mesh.Vertices);
+            Debug.Print("how many");
+            GL.BindBuffer(BufferTarget.ArrayBuffer, _vertexBufferObject);
+            GL.BufferData(BufferTarget.ArrayBuffer, vertFloats.Count * sizeof(float), vertFloats.ToArray(), BufferUsageHint.StaticDraw);
+
+            _elementBufferObject = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ElementArrayBuffer, _elementBufferObject);
+            GL.BufferData(BufferTarget.ElementArrayBuffer, mesh.Indices.Count* sizeof(uint), mesh.Indices.ToArray(), BufferUsageHint.StaticDraw);
+
+            // shader.frag has been modified yet again, take a look at it as well.
+            _shader = new Shader("Shaders/shader.vert", "Shaders/shader.frag");
+            _shader.Use();
+
+            var vertexLocation = _shader.GetAttribLocation("aPosition");
+            GL.EnableVertexAttribArray(vertexLocation);
+            GL.VertexAttribPointer(vertexLocation, 3, VertexAttribPointerType.Float, false, 5 * sizeof(float), 0);
+
+            var texCoordLocation = _shader.GetAttribLocation("aTexCoord");
+            GL.EnableVertexAttribArray(texCoordLocation);
+            GL.VertexAttribPointer(texCoordLocation, 2, VertexAttribPointerType.Float, false, 5 * sizeof(float), 3 * sizeof(float));
+
+            if (mesh.material.DiffuseTex)
             {
-                Vector2 texCoord = texCoords[texCoordIndex];
-                texCoordsData.AddRange(new float[] { texCoord.X, texCoord.Y });
+                _texture = Texture.LoadFromFile(mesh.material.DiffuseMap);
+                _texture.Use(TextureUnit.Texture0);
             }
-            else
+
+            if (mesh.material.SpecularTex)
             {
-                texCoordsData.AddRange(new float[] { 0.0f, 0.0f });
+                _texture2 = Texture.LoadFromFile(mesh.material.SpecularMap);
+                _texture2.Use(TextureUnit.Texture1);
             }
+            // Next, we must setup the samplers in the shaders to use the right textures.
+            // The int we send to the uniform indicates which texture unit the sampler should use.
+            //_shader.SetInt("texture0", 0);
+            //_shader.SetInt("texture1", 1);
         }
+        */
 
-        
-
-        vbo = GL.GenBuffer();
-        GL.BindBuffer(BufferTarget.ArrayBuffer, vbo);
-        GL.BufferData(BufferTarget.ArrayBuffer, verticesData.Count * sizeof(float), verticesData.ToArray(), BufferUsageHint.StaticDraw);
-
-
-        int vao = GL.GenVertexArray();
-        GL.BindVertexArray(vao);
-
-        var positionLocation = _lightingShader.GetAttribLocation("aPos");
-        GL.EnableVertexAttribArray(positionLocation);
-        GL.VertexAttribPointer(positionLocation, 3, VertexAttribPointerType.Float, false, 0, 0);
-
-        var normalLocation = _lightingShader.GetAttribLocation("aNormal");
-        GL.EnableVertexAttribArray(normalLocation);
-        GL.VertexAttribPointer(normalLocation, 3, VertexAttribPointerType.Float, false, 0, 3 * sizeof(float));
-
-        var texCoordLocation = _lightingShader.GetAttribLocation("aTexCoords");
-        GL.EnableVertexAttribArray(texCoordLocation);
-        GL.VertexAttribPointer(texCoordLocation, 2, VertexAttribPointerType.Float, false, 0, 6 * sizeof(float));
-
-
-        int numVertices = vertexIndices.Count;
-
-        
-
-        List<Material> materialList = materials.Values.ToList();
-        int j = 0;
-        foreach (Material mat in materialList)
-        {
-            //Debug.Print(mat.name + "starts at " + materialStartIndex[j]);
-            mat.startIndex = materialStartIndex[j];
-            j++;
-        }
-        //Debug.Print("matNames Count: " + materialNames.Count);
-
-        return new Mesh(vao, vbo, numVertices, materialList, materialNames, vertexIndices);
+        return meshes;
     }
 
     public static string ChangeObjToMtl(string objFilePath)
@@ -244,5 +231,19 @@ public class ObjLoader
         string mtlFilePath = Path.Combine(directory, fileNameWithoutExt + ".mtl");
 
         return mtlFilePath;
+    }
+
+    protected static List<float> vector3ToFloat(List<Vector3> vectors)
+    {
+        List<float> floatList = new(); 
+        foreach (Vector3 vector in vectors)
+        {
+            floatList.Add(vector.X);
+            floatList.Add(vector.Y);
+            floatList.Add(vector.Z);
+        }
+        return floatList;
+        // Now, floatList contains all the components of the Vector3 objects.
+        //This code iterates through the Vector3 objects, extracting their X, Y, and Z components and adding them to the floatList, effectively flattening the 3D vectors into a list of floats.
     }
 }

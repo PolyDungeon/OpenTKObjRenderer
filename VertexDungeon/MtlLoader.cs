@@ -78,13 +78,13 @@ public class MtlLoader
                 case "map_Kd":
                     if (currentMaterial != null && parts.Length >= 2)
                     {
+                        //Debug.Print(parts[1]);
                         string textureFile = parts[1];
-                        //Debug.Print("DiffuseMap: " + textureFile + "\n");
-                        //Texture textureId = Texture.LoadFromFile(unixPath);
-                        //currentMaterial.DiffuseMap = textureId;
+                        textureFile = ConvertToUnixPath(textureFile);
+                        Debug.Print(textureFile);
                         currentMaterial.DiffuseTex = true;
                         currentMaterial.DiffuseMap = textureFile;
-                        
+                        //currentMaterial.DiffuseMap = Path.Combine(Path.GetDirectoryName(mtlFilePath), textureFile);
                     }
                     break;
 
@@ -92,14 +92,11 @@ public class MtlLoader
                     if (currentMaterial != null && parts.Length >= 2)
                     {
                         string textureFile = parts[1];
-                        //string unixPath = ConvertToUnixPath(textureFile);
-                        //Debug.Print("SpecularMap: " + textureFile + "\n");
-                        //Texture textureId = Texture.LoadFromFile(unixPath);
-                        //currentMaterial.SpecularMap = textureId;
                         currentMaterial.SpecularTex = true;
                         currentMaterial.SpecularMap = textureFile;
+                        //currentMaterial.SpecularMap = Path.Combine(Path.GetDirectoryName(mtlFilePath), textureFile);
                     }
-                    break;
+                    break; 
             }
         }
 

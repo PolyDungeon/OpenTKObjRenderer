@@ -48,8 +48,8 @@ namespace ObjRenderer
 		public Vector3 AmbientColor;
 		public Vector3 DiffuseColor;
 		public Vector3 SpecularColor;
-		//public Texture DiffuseMap;
-		//public Texture SpecularMap;
+		public Texture DiffuseTexture;
+		public Texture SpecularTexture;
 		public string DiffuseMap;
 		public string SpecularMap;
 
