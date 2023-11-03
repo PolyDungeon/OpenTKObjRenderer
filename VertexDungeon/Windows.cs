@@ -13,10 +13,6 @@ using System.Diagnostics;
 using System;
 using ObjRenderer;
 using Material = ObjRenderer.Material;
-using System.Resources;
-using Assimp;
-using System.Xml.Linq;
-using Assimp.Unmanaged;
 //using System.Diagnostics;
 
 namespace LearnOpenTK

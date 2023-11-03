@@ -1,6 +1,4 @@
-﻿using Assimp;
-using Assimp.Unmanaged;
-using LearnOpenTK.Common;
+﻿using LearnOpenTK.Common;
 using ObjRenderer;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;

@@ -21,14 +21,6 @@ using Material = ObjRenderer.Material;
 
 public class ObjLoader
 {
-    static int _vertexArrayObject;
-    static int _vertexBufferObject;
-    static int _elementBufferObject;
-    static private Shader _shader;
-
-    static private Texture _texture;
-
-    static private Texture _texture2;
     public static List<Mesh> LoadObjFile(string filePath, string mtlFilePath = null)
     {
 
